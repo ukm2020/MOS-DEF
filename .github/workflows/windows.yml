@@ -1,0 +1,167 @@
+name: Windows Build and Release
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/MosDef.Cli/MosDef.Cli.csproj'
+  ARTIFACT_NAME: 'mos-def-windows'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: '**/TestResults/**/*.xml'
+        retention-days: 30
+
+    - name: Publish CLI application
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish `
+          /p:PublishSingleFile=true `
+          /p:PublishTrimmed=true `
+          /p:DebugType=None `
+          /p:DebugSymbols=false
+
+    - name: Verify executable exists
+      run: |
+        if (Test-Path "./publish/mos-def.exe") {
+          Write-Output "✓ mos-def.exe created successfully"
+          Get-ChildItem "./publish/mos-def.exe" | Select-Object Name, Length, LastWriteTime
+        } else {
+          Write-Error "✗ mos-def.exe not found"
+          exit 1
+        }
+
+    - name: Test executable
+      run: |
+        Write-Output "Testing executable..."
+        ./publish/mos-def.exe --version
+        ./publish/mos-def.exe --help | Select-Object -First 5
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ./publish/mos-def.exe
+        retention-days: 90
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ./release
+
+    - name: Get release info
+      id: release_info
+      run: |
+        $tagName = "${{ github.event.release.tag_name }}"
+        $version = $tagName -replace '^v', ''
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        echo "tag_name=$tagName" >> $env:GITHUB_OUTPUT
+
+    - name: Rename executable for release
+      run: |
+        $version = "${{ steps.release_info.outputs.version }}"
+        $sourceFile = "./release/mos-def.exe"
+        $targetFile = "./release/mos-def-v$version-win-x64.exe"
+        
+        if (Test-Path $sourceFile) {
+          Move-Item $sourceFile $targetFile
+          Write-Output "✓ Renamed to: mos-def-v$version-win-x64.exe"
+          Get-ChildItem $targetFile | Select-Object Name, Length
+        } else {
+          Write-Error "✗ Source file not found: $sourceFile"
+          exit 1
+        }
+
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./release/mos-def-v${{ steps.release_info.outputs.version }}-win-x64.exe
+        asset_name: mos-def-v${{ steps.release_info.outputs.version }}-win-x64.exe
+        asset_content_type: application/octet-stream
+
+  security-scan:
+    runs-on: windows-latest
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run security scan
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: 'security-scan-results.sarif'
+      continue-on-error: true
+
+    - name: Setup .NET for security analysis
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install security analysis tools
+      run: |
+        dotnet tool install --global security-scan --version 5.6.7
+      continue-on-error: true
+
+    - name: Run .NET security analysis
+      run: |
+        dotnet list package --vulnerable --include-transitive 2>&1 | Tee-Object -FilePath security-report.txt
+        if ($LASTEXITCODE -ne 0) {
+          Write-Warning "Security vulnerabilities detected. Check security-report.txt for details."
+        }
+      continue-on-error: true
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-report
+        path: security-report.txt
+        retention-days: 30

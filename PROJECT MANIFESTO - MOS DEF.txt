@@ -1,0 +1,187 @@
+PROJECT MANIFEST: MOS-DEF (Monitor Orientation Switcher - Desktop Efficiency Fixer)
+
+GOAL
+Create a Windows 11 utility that sets display rotation to Portrait or Landscape in one click or one command.
+Include per monitor targeting from the start so one preferred monitor can be toggled without touching others.
+
+PRIMARY DECISIONS
+- LLM inside Cursor
+  - Primary: Claude Sonnet
+  - Secondary: GPT
+  - Settings: temperature 0.1 to 0.2, top_p 1.0
+- Language and runtime
+  - C# on .NET 8
+  - Reason: direct Windows API access via PInvoke, simple packaging to single EXE, easy path to optional GUI
+
+SCOPE V1
+- Windows 11 only
+- Active displays only
+- Actions: landscape, portrait, toggle
+- Per monitor selection flags and saved default target
+- CLI first. Optional WinForms GUI later in same repo
+
+OUT OF SCOPE V1
+- Mac or Linux
+- Arbitrary per monitor angles beyond 0, 90 (270 may be added in v0.2)
+- Complex topology edits
+
+REPO STRUCTURE
+- src/
+  - MosDef.Core/                - rotation logic, PInvoke, monitor discovery, config
+  - MosDef.Cli/                 - command line entry point and flag handling
+  - MosDef.Gui/                 - optional WinForms GUI, added later
+- tests/
+  - MosDef.Tests/               - unit tests that mock the API boundary
+- .github/workflows/windows.yml - CI to build and attach EXE artifact
+- README.md
+- LICENSE (MIT)
+
+CLI CONTRACT
+- Executable name: mos-def.exe
+- Usage:
+  - mos-def landscape
+  - mos-def portrait
+  - mos-def toggle
+  - Listing:
+    - mos-def --list
+  - Per monitor targeting:
+    - mos-def portrait --only M2
+    - mos-def toggle --only name:"DELL U2720Q"
+    - mos-def landscape --include M1,M3
+    - mos-def portrait --exclude M2
+  - Defaults:
+    - mos-def toggle --save-default M2
+    - mos-def --clear-default
+- Global flags:
+  - --verbose
+  - --dry-run
+
+PER MONITOR SELECTOR SPEC
+- Selectors accepted by --only, --include, --exclude
+  - M# where # is MOS-DEF index assigned left to right (M1, M2, M3)
+  - name:"string" or name:partial
+  - conn:HDMI or conn:DISPLAYPORT or conn:INTERNAL
+  - path:<short-hash> which is derived from the device path for stability
+  - name:/regex/ for advanced matching
+- Precedence when multiple selector types are given:
+  1) path
+  2) M# id
+  3) name (exact then partial then regex)
+  4) conn
+
+PERSISTED CONFIG
+- File: %AppData%\MOS-DEF\config.json
+- Shape:
+  {
+    "default_selector": "M2",
+    "last_action": "portrait",
+    "selector_history": ["M2","name:U2720Q"]
+  }
+- Behavior:
+  - If a default_selector exists and no include or only flags are passed, operate on the default only
+  - --save-default <selector> writes default_selector
+  - --clear-default removes default_selector
+  - Never overwrite default unless --save-default is present
+
+OUTPUT FOR --list
+- Print a simple table
+  ID  NAME             CONN   RESOLUTION  ROT  KEY
+  M1  LG ULTRAFINE     DP     3840x2160   0    7a1c-2f9e
+  M2  DELL U2720Q      HDMI   3840x2160   90   4f2a-9c7e
+  M3  ASUS PA279CV     DP     3840x2160   0    c3b1-884d
+
+TECHNICAL NOTES
+- Use user32 display configuration APIs
+  - QueryDisplayConfig to enumerate DISPLAYCONFIG_PATH_INFO and DISPLAYCONFIG_MODE_INFO
+  - DisplayConfigGetDeviceInfo with DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME to get FriendlyName and connection tech
+  - SetDisplayConfig to apply changes
+- Required enums and flags
+  - DISPLAYCONFIG_ROTATION: IDENTITY, ROTATE90, ROTATE180, ROTATE270
+  - SDC_APPLY = 0x00000080
+  - SDC_SAVE_TO_DATABASE = 0x00000200
+  - SDC_USE_SUPPLIED_DISPLAY_CONFIG = 0x00000020
+  - Combine flags for apply and persist: SDC_APPLY | SDC_SAVE_TO_DATABASE | SDC_USE_SUPPLIED_DISPLAY_CONFIG
+- Rotation mapping
+  - landscape -> IDENTITY
+  - portrait -> ROTATE90
+  - toggle -> if 0 then 90 else 0 (per targeted display)
+- Errors and return codes
+  - 0 success
+  - 2 invalid args or no matching monitors
+  - 3 Windows API failure (print last error code)
+
+EDGE CASES
+- If selector resolves to zero monitors, print options from --list and exit 2
+- If selector resolves to more than one and user passed --only, require exact disambiguation
+- If a target is already at the requested rotation, skip and report in verbose
+- Identical names on multiple monitors should push user to use path hash or M# id
+
+PACKAGING
+- dotnet publish -c Release -r win-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true
+- Output a single mos-def.exe in artifacts folder
+
+CI
+- GitHub Actions windows-latest
+- Build on push and PR
+- Upload single file exe as artifact
+- On tag v*, create a GitHub Release with exe attached
+
+SECURITY AND PRIVACY
+- No network access
+- No telemetry
+- No elevation required on typical systems
+- Group policy may block display changes in some enterprises, document in README
+
+README CHECKLIST
+- What MOS-DEF does
+- Safety notes
+- Usage examples including per monitor flags and defaults
+- Troubleshooting
+- Build and CI instructions
+- License
+
+CURSOR TASKS
+1) Scaffold solution
+   - Create .NET 8 solution with MosDef.Core, MosDef.Cli, MosDef.Gui (placeholder)
+   - Add MIT LICENSE and README stub
+2) Implement PInvoke and discovery in MosDef.Core
+   - User32DisplayConfig static class with methods:
+     - GetActiveDisplays() -> returns a list of display records with Id, Name, Conn, Resolution, Rotation, PathKey
+     - ApplyRotationAll(targetRotation, selection)
+     - TryToggleRotation(selection)
+   - Build selector parser and matcher
+   - Build config manager for %AppData%\MOS-DEF\config.json
+3) Implement CLI in MosDef.Cli
+   - Argument parsing for actions and flags
+   - --list table output
+   - Default selector behavior
+   - --dry-run and --verbose
+   - Exit codes per spec
+4) Tests in MosDef.Tests
+   - Mock the API boundary to avoid real screen changes
+   - Test selector parsing and list formatting
+   - Test default selector logic and dry-run
+5) Packaging and CI
+   - Add dotnet publish script to produce single EXE
+   - Add GitHub Actions workflow to build and upload artifacts
+   - Add Release on tag v* with attached exe
+6) Optional GUI placeholder
+   - Create MosDef.Gui project with empty form to be filled in v0.3
+
+ACCEPTANCE CRITERIA V1
+- mos-def landscape sets all targeted displays to landscape and persists
+- mos-def portrait sets all targeted displays to portrait and persists
+- mos-def toggle flips between 0 and 90 for targeted displays
+- mos-def --list prints table of active displays with stable IDs and keys
+- Per monitor flags work as designed and a saved default is honored
+- CI produces a single EXE artifact on windows-latest
+
+VERSIONING
+- v0.1.0 CLI with per monitor flags, list, defaults, CI artifact
+- v0.2.0 add ROTATE270 support and per monitor overrides file
+- v0.3.0 optional WinForms GUI with Portrait, Landscape, Toggle buttons
+
+NOTES TO AI
+- Use exact struct layouts and SetLastError = true on PInvoke
+- Prefer safe marshalling and comments that reference Microsoft docs names
+- Keep console UX simple and consistent with the CLI contract
