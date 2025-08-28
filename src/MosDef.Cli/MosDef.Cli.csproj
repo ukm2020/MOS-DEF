@@ -8,6 +8,7 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>mos-def</AssemblyName>
     <RootNamespace>MosDef.Cli</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">

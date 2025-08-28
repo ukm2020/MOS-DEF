@@ -46,6 +46,13 @@ try {
         throw "dotnet restore failed with exit code $LASTEXITCODE"
     }
 
+    # Ensure runtime-specific assets exist for CLI (required due to RuntimeIdentifier)
+    Write-Host "Restoring CLI project for win-x64 runtime..." -ForegroundColor Green
+    dotnet restore "src/MosDef.Cli/MosDef.Cli.csproj" --runtime win-x64
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet restore (RID) failed with exit code $LASTEXITCODE"
+    }
+
     # Build solution
     Write-Host "Building solution..." -ForegroundColor Green
     dotnet build $SolutionFile --configuration $Configuration --no-restore
@@ -92,12 +99,12 @@ try {
     # Process results
     if ($testExitCode -eq 0) {
         Write-Host ""
-        Write-Host "✓ All tests passed!" -ForegroundColor Green
+        Write-Host "[OK] All tests passed!" -ForegroundColor Green
         
         # Display test result files
         $testResults = Get-ChildItem $OutputDir -Filter "*.trx" -Recurse
         if ($testResults) {
-            Write-Host "✓ Test results: $($testResults.Count) file(s)" -ForegroundColor Green
+            Write-Host "[OK] Test results: $($testResults.Count) file(s)" -ForegroundColor Green
             $testResults | ForEach-Object {
                 Write-Host "  - $($_.FullName)" -ForegroundColor Gray
             }
@@ -107,7 +114,7 @@ try {
         if ($Coverage) {
             $coverageFiles = Get-ChildItem $OutputDir -Filter "coverage.cobertura.xml" -Recurse
             if ($coverageFiles) {
-                Write-Host "✓ Coverage reports: $($coverageFiles.Count) file(s)" -ForegroundColor Green
+                Write-Host "[OK] Coverage reports: $($coverageFiles.Count) file(s)" -ForegroundColor Green
                 $coverageFiles | ForEach-Object {
                     Write-Host "  - $($_.FullName)" -ForegroundColor Gray
                 }
@@ -115,7 +122,7 @@ try {
         }
     } else {
         Write-Host ""
-        Write-Host "✗ Some tests failed!" -ForegroundColor Red
+        Write-Host "[ERROR] Some tests failed!" -ForegroundColor Red
         
         # Try to display test summary
         $testResults = Get-ChildItem $OutputDir -Filter "*.trx" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -132,6 +139,6 @@ try {
 
 } catch {
     Write-Host ""
-    Write-Host "✗ Test execution failed: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Test execution failed: $_" -ForegroundColor Red
     exit 1
 }

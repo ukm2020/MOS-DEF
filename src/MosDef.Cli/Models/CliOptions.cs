@@ -101,8 +101,6 @@ public class CliOptions
     /// </summary>
     public void Validate()
     {
-        ValidationErrors.Clear();
-
         // Validate action
         if (!IsSpecialCommand && string.IsNullOrEmpty(Action))
         {

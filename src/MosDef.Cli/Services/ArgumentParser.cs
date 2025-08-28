@@ -14,7 +14,7 @@ public static class ArgumentParser
     /// </summary>
     /// <param name="args">Command line arguments</param>
     /// <returns>Parsed CliOptions with validation results</returns>
-    public static CliOptions Parse(string[] args)
+    public static CliOptions Parse(string[]? args)
     {
         var options = new CliOptions
         {

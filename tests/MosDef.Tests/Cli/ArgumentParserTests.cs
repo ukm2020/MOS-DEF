@@ -1,5 +1,7 @@
 using MosDef.Cli.Services;
 using Xunit;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace MosDef.Tests.Cli;
 
@@ -10,13 +12,13 @@ namespace MosDef.Tests.Cli;
 public class ArgumentParserTests
 {
     [Theory]
-    [InlineData(new string[] { "landscape" }, "landscape", false, false, false)]
-    [InlineData(new string[] { "portrait" }, "portrait", false, false, false)]
-    [InlineData(new string[] { "toggle" }, "toggle", false, false, false)]
-    [InlineData(new string[] { "LANDSCAPE" }, "landscape", false, false, false)]
-    public void Parse_BasicActions_ParsesCorrectly(string[] args, string expectedAction, bool expectedList, bool expectedVerbose, bool expectedDryRun)
+    [InlineData("landscape", "landscape", false, false, false)]
+    [InlineData("portrait", "portrait", false, false, false)]
+    [InlineData("toggle", "toggle", false, false, false)]
+    [InlineData("LANDSCAPE", "landscape", false, false, false)]
+    public void Parse_BasicActions_ParsesCorrectly(string action, string expectedAction, bool expectedList, bool expectedVerbose, bool expectedDryRun)
     {
-        var options = ArgumentParser.Parse(args);
+        var options = ArgumentParser.Parse(new[] { action });
 
         Assert.Equal(expectedAction, options.Action);
         Assert.Equal(expectedList, options.ShowList);
@@ -26,13 +28,13 @@ public class ArgumentParserTests
     }
 
     [Theory]
-    [InlineData(new string[] { "--list" }, true)]
-    [InlineData(new string[] { "-l" }, true)]
-    [InlineData(new string[] { "--verbose" }, false)]
-    [InlineData(new string[] { "-v" }, false)]
-    public void Parse_ListFlags_ParsesCorrectly(string[] args, bool expectedList)
+    [InlineData("--list", true)]
+    [InlineData("-l", true)]
+    [InlineData("--verbose", false)]
+    [InlineData("-v", false)]
+    public void Parse_ListFlags_ParsesCorrectly(string arg, bool expectedList)
     {
-        var options = ArgumentParser.Parse(args);
+        var options = ArgumentParser.Parse(new[] { arg });
 
         Assert.Equal(expectedList, options.ShowList);
         if (expectedList)
@@ -42,67 +44,88 @@ public class ArgumentParserTests
     }
 
     [Theory]
-    [InlineData(new string[] { "--verbose" }, true)]
-    [InlineData(new string[] { "-v" }, true)]
-    [InlineData(new string[] { "portrait", "--verbose" }, true)]
-    [InlineData(new string[] { "landscape" }, false)]
-    public void Parse_VerboseFlags_ParsesCorrectly(string[] args, bool expectedVerbose)
+    [InlineData("--verbose", null, true)]
+    [InlineData("-v", null, true)]
+    [InlineData("portrait", "--verbose", true)]
+    [InlineData("landscape", null, false)]
+    public void Parse_VerboseFlags_ParsesCorrectly(string arg1, string? arg2, bool expectedVerbose)
     {
+        var args = arg2 is null ? new[] { arg1 } : new[] { arg1, arg2 };
         var options = ArgumentParser.Parse(args);
         Assert.Equal(expectedVerbose, options.Verbose);
     }
 
     [Theory]
-    [InlineData(new string[] { "--dry-run" }, true)]
-    [InlineData(new string[] { "-n" }, true)]
-    [InlineData(new string[] { "toggle", "--dry-run" }, true)]
-    [InlineData(new string[] { "portrait" }, false)]
-    public void Parse_DryRunFlags_ParsesCorrectly(string[] args, bool expectedDryRun)
+    [InlineData("--dry-run", null, true)]
+    [InlineData("-n", null, true)]
+    [InlineData("toggle", "--dry-run", true)]
+    [InlineData("portrait", null, false)]
+    public void Parse_DryRunFlags_ParsesCorrectly(string arg1, string? arg2, bool expectedDryRun)
     {
+        var args = arg2 is null ? new[] { arg1 } : new[] { arg1, arg2 };
         var options = ArgumentParser.Parse(args);
         Assert.Equal(expectedDryRun, options.DryRun);
     }
 
     [Theory]
-    [InlineData(new string[] { "portrait", "--only", "M1" }, new string[] { "M1" })]
-    [InlineData(new string[] { "landscape", "--only", "M1,M3" }, new string[] { "M1", "M3" })]
-    [InlineData(new string[] { "toggle", "--only=M2" }, new string[] { "M2" })]
-    [InlineData(new string[] { "portrait", "--only=name:DELL,conn:HDMI" }, new string[] { "name:DELL", "conn:HDMI" })]
-    public void Parse_OnlySelectors_ParsesCorrectly(string[] args, string[] expectedSelectors)
+    [InlineData("portrait", "--only", "M1", "M1")]
+    [InlineData("landscape", "--only", "M1,M3", "M1,M3")]
+    [InlineData("toggle", "--only=M2", null, "M2")]
+    [InlineData("portrait", "--only=name:DELL,conn:HDMI", null, "name:DELL,conn:HDMI")]
+    public void Parse_OnlySelectors_ParsesCorrectly(string arg1, string arg2, string? arg3, string expectedSelectorsCsv)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        if (!string.IsNullOrEmpty(arg3)) argsList.Add(arg3!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
+        var expectedSelectors = expectedSelectorsCsv.Split(',');
         Assert.Equal(expectedSelectors, options.OnlySelectors);
         Assert.True(options.IsValid);
     }
 
     [Theory]
-    [InlineData(new string[] { "portrait", "--include", "M1" }, new string[] { "M1" })]
-    [InlineData(new string[] { "landscape", "--include=M2,M3" }, new string[] { "M2", "M3" })]
-    public void Parse_IncludeSelectors_ParsesCorrectly(string[] args, string[] expectedSelectors)
+    [InlineData("portrait", "--include", "M1", "M1")]
+    [InlineData("landscape", "--include=M2,M3", null, "M2,M3")]
+    public void Parse_IncludeSelectors_ParsesCorrectly(string arg1, string arg2, string? arg3, string expectedSelectorsCsv)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        if (!string.IsNullOrEmpty(arg3)) argsList.Add(arg3!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
+        var expectedSelectors = expectedSelectorsCsv.Split(',');
         Assert.Equal(expectedSelectors, options.IncludeSelectors);
         Assert.True(options.IsValid);
     }
 
     [Theory]
-    [InlineData(new string[] { "portrait", "--exclude", "M1" }, new string[] { "M1" })]
-    [InlineData(new string[] { "landscape", "--exclude=M2,M3" }, new string[] { "M2", "M3" })]
-    public void Parse_ExcludeSelectors_ParsesCorrectly(string[] args, string[] expectedSelectors)
+    [InlineData("portrait", "--exclude", "M1", "M1")]
+    [InlineData("landscape", "--exclude=M2,M3", null, "M2,M3")]
+    public void Parse_ExcludeSelectors_ParsesCorrectly(string arg1, string arg2, string? arg3, string expectedSelectorsCsv)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        if (!string.IsNullOrEmpty(arg3)) argsList.Add(arg3!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
+        var expectedSelectors = expectedSelectorsCsv.Split(',');
         Assert.Equal(expectedSelectors, options.ExcludeSelectors);
         Assert.True(options.IsValid);
     }
 
     [Theory]
-    [InlineData(new string[] { "portrait", "--save-default", "M2" }, "M2")]
-    [InlineData(new string[] { "toggle", "--save-default=name:DELL" }, "name:DELL")]
-    public void Parse_SaveDefaultSelector_ParsesCorrectly(string[] args, string expectedSelector)
+    [InlineData("portrait", "--save-default", "M2", "M2")]
+    [InlineData("toggle", "--save-default=name:DELL", null, "name:DELL")]
+    public void Parse_SaveDefaultSelector_ParsesCorrectly(string arg1, string arg2, string? arg3, string expectedSelector)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        if (!string.IsNullOrEmpty(arg3)) argsList.Add(arg3!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
         Assert.Equal(expectedSelector, options.SaveDefaultSelector);
@@ -120,12 +143,12 @@ public class ArgumentParserTests
     }
 
     [Theory]
-    [InlineData(new string[] { "--help" })]
-    [InlineData(new string[] { "-h" })]
-    [InlineData(new string[] { "/?" })]
-    public void Parse_HelpFlags_ParsesCorrectly(string[] args)
+    [InlineData("--help")]
+    [InlineData("-h")]
+    [InlineData("/?")]
+    public void Parse_HelpFlags_ParsesCorrectly(string arg)
     {
-        var options = ArgumentParser.Parse(args);
+        var options = ArgumentParser.Parse(new[] { arg });
 
         Assert.True(options.ShowHelp);
         Assert.True(options.IsSpecialCommand);
@@ -159,10 +182,13 @@ public class ArgumentParserTests
     }
 
     [Theory]
-    [InlineData(new string[] { "invalid_action" })]
-    [InlineData(new string[] { "landscape", "portrait" })]
-    public void Parse_InvalidActions_AddsValidationError(string[] args)
+    [InlineData("invalid_action", null)]
+    [InlineData("landscape", "portrait")]
+    public void Parse_InvalidActions_AddsValidationError(string arg1, string? arg2)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
         Assert.False(options.IsValid);
@@ -170,37 +196,40 @@ public class ArgumentParserTests
     }
 
     [Theory]
-    [InlineData(new string[] { "--only" })]
-    [InlineData(new string[] { "--include" })]
-    [InlineData(new string[] { "--exclude" })]
-    [InlineData(new string[] { "--save-default" })]
-    public void Parse_FlagsWithoutValues_AddsValidationError(string[] args)
+    [InlineData("--only")]
+    [InlineData("--include")]
+    [InlineData("--exclude")]
+    [InlineData("--save-default")]
+    public void Parse_FlagsWithoutValues_AddsValidationError(string arg)
     {
-        var options = ArgumentParser.Parse(args);
+        var options = ArgumentParser.Parse(new[] { arg });
 
         Assert.False(options.IsValid);
         Assert.NotEmpty(options.ValidationErrors);
     }
 
     [Theory]
-    [InlineData(new string[] { "--only=" })]
-    [InlineData(new string[] { "--include=" })]
-    [InlineData(new string[] { "--exclude=" })]
-    [InlineData(new string[] { "--save-default=" })]
-    public void Parse_FlagsWithEmptyValues_AddsValidationError(string[] args)
+    [InlineData("--only=")]
+    [InlineData("--include=")]
+    [InlineData("--exclude=")]
+    [InlineData("--save-default=")]
+    public void Parse_FlagsWithEmptyValues_AddsValidationError(string arg)
     {
-        var options = ArgumentParser.Parse(args);
+        var options = ArgumentParser.Parse(new[] { arg });
 
         Assert.False(options.IsValid);
         Assert.NotEmpty(options.ValidationErrors);
     }
 
     [Theory]
-    [InlineData(new string[] { "--unknown-flag" })]
-    [InlineData(new string[] { "-x" })]
-    [InlineData(new string[] { "portrait", "unknown_arg" })]
-    public void Parse_UnknownFlags_AddsValidationError(string[] args)
+    [InlineData("--unknown-flag", null)]
+    [InlineData("-x", null)]
+    [InlineData("portrait", "unknown_arg")]
+    public void Parse_UnknownFlags_AddsValidationError(string arg1, string? arg2)
     {
+        var argsList = new List<string> { arg1 };
+        if (!string.IsNullOrEmpty(arg2)) argsList.Add(arg2!);
+        var args = argsList.ToArray();
         var options = ArgumentParser.Parse(args);
 
         Assert.False(options.IsValid);

@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MosDef.Core\MosDef.Core.csproj" />
+    <ProjectReference Include="..\..\src\MosDef.Cli\MosDef.Cli.csproj" />
   </ItemGroup>
 
 </Project>

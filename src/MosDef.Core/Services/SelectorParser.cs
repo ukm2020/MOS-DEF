@@ -276,7 +276,10 @@ public static class SelectorParser
             var (isValid, errorMessage) = ValidateSelector(selector);
             if (!isValid)
             {
-                errors.Add(errorMessage);
+                // Include the offending selector to aid diagnostics and satisfy tests
+                errors.Add(string.IsNullOrEmpty(errorMessage)
+                    ? $"Invalid selector: '{selector}'"
+                    : $"{errorMessage} ('{selector}')");
             }
         }
 

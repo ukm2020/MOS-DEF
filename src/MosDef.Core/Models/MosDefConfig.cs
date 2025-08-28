@@ -175,6 +175,7 @@ public class MosDefConfig
     /// Serializes the configuration to JSON string.
     /// </summary>
     /// <returns>JSON string representation</returns>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "MosDefConfig properties are simple types that are preserved")]
     public string ToJson()
     {
         return JsonSerializer.Serialize(this, JsonOptions);
@@ -185,6 +186,7 @@ public class MosDefConfig
     /// </summary>
     /// <param name="json">JSON string to deserialize</param>
     /// <returns>MosDefConfig instance, or new instance if deserialization fails</returns>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "MosDefConfig properties are simple types that are preserved")]
     public static MosDefConfig FromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
