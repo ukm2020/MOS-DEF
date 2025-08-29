@@ -1,145 +1,26 @@
-# Build outputs
-bin/
-obj/
-artifacts/
-publish/
-out/
+# Build artifacts
+*.exe
+*.obj
+*.lib
+*.pdb
+*.ilk
+*.exp
 
-# Visual Studio / Visual Studio Code
-.vs/
+# Build directories
+build/
+artifacts/
+
+# IDE files
 .vscode/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-
-# .NET Core
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# Test results
-TestResults/
-test-results/
-*.trx
-*.coverage
-*.coveragexml
-
-# NuGet packages
-*.nupkg
-*.snupkg
-.nuget/
-
-# Package managers
-node_modules/
-bower_components/
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-
-# Temporary folders
-tmp/
-temp/
-
-# IDE specific files
+.idea/
 *.swp
 *.swo
 *~
 
-# Windows specific
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Mac specific
+# OS files
 .DS_Store
-.AppleDouble
-.LSOverride
+Thumbs.db
 
-# Linux specific
-*~
-
-# JetBrains Rider
-.idea/
-*.sln.iml
-
-# User-specific files
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Mono auto generated files
-mono_crash.*
-
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Oo]ut/
-[Ll]og/
-[Ll]ogs/
-
-# MSTest test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# NUnit
-*.VisualState.xml
-TestResult.xml
-nunit-*.xml
-
-# Test projects
-*.Tests/bin/
-*.Tests/obj/
+# Temporary files
+*.tmp
+*.temp

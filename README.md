@@ -1,134 +1,165 @@
-# MOS-DEF (Monitor Orientation Switcher - Desktop Efficiency Fixer)
+# MOS-DEF (Monitor Orientation Switcher – Desktop Efficiency Fixer)
 
-A Windows 11 utility that sets display rotation to Portrait or Landscape in one click or one command.
+A Windows 11 x64 console application for listing active monitors and setting their orientation to landscape, portrait, or toggle between them.
 
-## What MOS-DEF Does
+## Features
 
-MOS-DEF provides instant display rotation control for Windows 11 systems with:
-- One-command rotation: `mos-def portrait`, `mos-def landscape`, `mos-def toggle`
-- Per-monitor targeting: specify exactly which monitors to rotate
-- Persistent settings: changes are saved to Windows display configuration
-- No elevation required on typical systems
+- **Monitor Enumeration**: List all active monitors with their IDs, names, device paths, resolutions, and current orientations
+- **Orientation Control**: Set monitors to landscape (0°), portrait (90°), or toggle between them
+- **Flexible Selection**: Target specific monitors using various selector formats:
+  - Monitor IDs (`M1`, `M2`, etc.)
+  - Device paths (`device:"\\.\\DISPLAY1"`)
+  - Device name substrings (`name:"DELL"`)
+- **Configuration Management**: Save and load default monitor selections
+- **Safety Features**:
+  - Dry-run mode to preview changes
+  - Confirmation prompts with auto-revert capability
+  - RDP session detection and blocking (with override)
+- **Batch Operations**: Apply changes to multiple monitors with include/exclude filters
 
-## Safety Notes
+## Building
 
-- **Windows 11 only**: This utility is designed and tested for Windows 11 systems
-- **No network access**: MOS-DEF operates entirely offline with no telemetry
-- **Enterprise environments**: Group policy may block display changes in some corporate environments
-- **Active displays only**: Only connected and active displays are modified
+### Prerequisites
 
-## Usage Examples
+- Windows 11 x64
+- **One of the following development environments:**
+  - Visual Studio 2019/2022 with C++ workload
+  - Visual Studio Build Tools with C++ components
+  - CMake 3.20+ with Visual Studio generator
+
+### Quick Build (Recommended)
+
+Simply run the provided build script:
+
+```cmd
+build.bat
+```
+
+This will automatically handle the CMake configuration and building process.
+
+### Manual Build Steps
+
+#### Option 1: Using Visual Studio Developer Command Prompt
+
+```cmd
+# Open Visual Studio Developer Command Prompt
+# Navigate to project directory
+cd C:\path\to\MOS-DEF
+
+# Create build directory
+mkdir build
+cd build
+
+# Configure with CMake
+cmake .. -DCMAKE_BUILD_TYPE=Release
+
+# Build the project
+cmake --build . --config Release
+```
+
+#### Option 2: Using Visual Studio IDE
+
+1. Open `CMakeLists.txt` in Visual Studio
+2. Select Release configuration
+3. Build the project
+
+The executable will be created at `artifacts/mos-def.exe`.
+
+### Build Requirements Notes
+
+If you encounter compilation errors:
+
+1. **Missing CMake**: Install CMake from https://cmake.org/download/
+2. **Missing Visual Studio Tools**: Install Visual Studio Build Tools or Visual Studio Community Edition
+3. **Architecture Mismatch**: Ensure you're building for x64 architecture
+4. **Windows SDK**: Make sure Windows 11 SDK is installed with your Visual Studio tools
+
+## Usage
 
 ### Basic Commands
+
 ```bash
-# Set all displays to landscape
-mos-def landscape
+# List all monitors
+mos-def list
 
-# Set all displays to portrait
-mos-def portrait
-
-# Toggle between landscape and portrait
-mos-def toggle
-
-# List all available displays
-mos-def --list
-```
-
-### Per-Monitor Targeting
-```bash
-# Rotate only the second monitor
+# Set specific monitor to portrait
 mos-def portrait --only M2
 
-# Rotate specific monitor by name
-mos-def toggle --only name:"DELL U2720Q"
-
-# Rotate multiple monitors
+# Set multiple monitors to landscape
 mos-def landscape --include M1,M3
 
-# Rotate all except one monitor
-mos-def portrait --exclude M2
+# Toggle orientation of all monitors
+mos-def toggle
+
+# Toggle with exclusions
+mos-def toggle --exclude name:"TV"
 ```
 
-### Default Monitor Settings
+### Configuration
+
 ```bash
-# Save M2 as default target
+# Save default monitor selection
 mos-def toggle --save-default M2
 
 # Clear saved default
 mos-def --clear-default
-
-# When default is set, commands operate on default monitor only
-mos-def portrait  # operates on saved default monitor
 ```
 
-### Monitor Selectors
+### Safety Options
 
-- `M#`: MOS-DEF index (M1, M2, M3) assigned left to right
-- `name:"string"` or `name:partial`: Match by display name
-- `conn:HDMI` or `conn:DISPLAYPORT` or `conn:INTERNAL`: Match by connection type
-- `path:<hash>`: Match by device path hash for stability
-- `name:/regex/`: Advanced regex matching
-
-### Global Flags
 ```bash
-# Verbose output
-mos-def portrait --verbose
+# Preview changes without applying
+mos-def portrait --only M2 --dry-run
 
-# Dry run (show what would happen)
-mos-def toggle --dry-run
+# Auto-revert after 30 seconds if not confirmed
+mos-def toggle --revert-seconds 30
+
+# Skip confirmation prompts
+mos-def landscape --no-confirm
+
+# Force execution under RDP
+mos-def list --force-rdp
 ```
 
-## Troubleshooting
+### Selectors
 
-### Display Changes Don't Apply
-- Ensure Windows display settings aren't locked by group policy
-- Try running from an elevated command prompt if in a corporate environment
-- Check that the target monitor supports the requested rotation
+- `M#` - Monitor ID (M1, M2, etc.)
+- `device:"\\.\\DISPLAYn"` - Device path
+- `name:"substring"` - Device name substring (case-insensitive)
 
-### Monitor Not Found
-- Use `mos-def --list` to see available monitors and their identifiers
-- For monitors with identical names, use the `path:` selector with the hash from `--list`
-- Ensure the monitor is connected and active in Windows display settings
+## Configuration File
 
-### Configuration Issues
-- Configuration is stored in `%AppData%\MOS-DEF\config.json`
-- Delete this file to reset all settings if needed
+Settings are stored in `%APPDATA%\MOS-DEF\config.json`:
 
-## Build Instructions
-
-### Prerequisites
-- .NET 8 SDK
-- Windows 11 development environment
-
-### Building
-```bash
-# Debug build
-dotnet build
-
-# Release build with single-file executable
-dotnet publish src/MosDef.Cli -c Release -r win-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true
+```json
+{
+  "default_selector": "M2",
+  "last_action": "portrait"
+}
 ```
 
-The output executable will be `src/MosDef.Cli/bin/Release/net8.0/win-x64/publish/mos-def.exe`
+## Exit Codes
 
-### Running Tests
-```bash
-dotnet test
-```
+- `0` - Success
+- `2` - Bad arguments or no matching monitors
+- `3` - API failure
 
-## CI/CD
+## API Usage
 
-This project uses GitHub Actions for continuous integration:
-- Builds on every push and pull request
-- Creates release artifacts on tagged versions
-- Uploads single-file executable as build artifact
+The application uses the following Win32 APIs:
+
+- `EnumDisplayDevicesW` / `EnumDisplayDevicesA` - Enumerate display devices
+- `EnumDisplaySettingsExW` / `EnumDisplaySettingsExA` - Get display settings
+- `ChangeDisplaySettingsExW` / `ChangeDisplaySettingsExA` - Apply display changes
+
+## Architecture
+
+- **cli.c/cli.h** - Main entry point, argument parsing, user interaction
+- **enum.c/enum.h** - Monitor enumeration and display formatting
+- **rotate.c/rotate.h** - Display rotation logic and rollback functionality
+- **config.c/config.h** - JSON configuration file handling
+- **util.c/util.h** - String utilities, selector parsing, RDP detection
 
 ## License
 
-GPL-3.0 License - see [LICENSE](LICENSE) file for details.
-
-## Version History
-
-- **v0.1.0**: CLI with per-monitor flags, list command, defaults, and CI artifacts
-- **v0.2.0** (planned): Add 270-degree rotation support and per-monitor overrides file
-- **v0.3.0** (planned): Optional WinForms GUI with Portrait, Landscape, Toggle buttons
+This project is provided as-is for educational and practical use.
