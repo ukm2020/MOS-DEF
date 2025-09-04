@@ -1,6 +1,9 @@
 # MOS-DEF (Monitor Orientation Switcher – Desktop Efficiency Fixer)
 
-A Windows 11 x64 console application for listing active monitors and setting their orientation to landscape, portrait, or toggle between them.
+A Windows 11 x64 console application for listing active monitors and setting their orientation to landscape, portrait, or toggle between them. This was built in under 3 hours from concept to executable. All critical features are fully functional, and I will be QA-ing the entire feature set, incuding some already identified trivial bugs in the coming days and weeks. Insofar as I'm aware, no other self-contained CLI utility exists that does what MOS-DEF does.
+
+Cheers,
+Krishna
 
 ## Features
 
